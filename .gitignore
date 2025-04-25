@@ -1,0 +1,60 @@
+# === CMake build directories ===
+build/
+out/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# === Ninja ===
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# === Compiled binaries ===
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# === IDE / Editor files ===
+
+# VSCode
+.vscode/
+
+# CLion / JetBrains
+.idea/
+
+# Visual Studio
+*.sln
+*.vcxproj*
+*.user
+*.db
+
+# Mac OS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# === Vcpkg build folders ===
+vcpkg_installed/
+packages/
+installed/
+
+# === Logs or debug info ===
+*.log
+
+# === Cache / Presets (optional, if regenerated) ===
+CMakePresets.json.user
+
+# Extra 
+notes.txt
+setup.txt
