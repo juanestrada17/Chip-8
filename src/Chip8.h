@@ -25,6 +25,8 @@ private:
     uint8_t delay_timer;
     uint8_t sound_timer; 
 
+    // 2048 pixels 
+    std::array<uint8_t, 64 * 32> gfx;
 
     // 35 opcodes of two bytes
     uint16_t opcode; 

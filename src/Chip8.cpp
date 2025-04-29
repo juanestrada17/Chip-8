@@ -11,7 +11,8 @@ void Chip8::initialize(){
     memory.fill(0); 
     V.fill(0);
     stack.fill(0);
-    // TODO => Display  
+    // TODO => Display
+    gfx.fill(0);
 
     // resets 
     pc = 0x200; // pc starts at location 0x200
@@ -105,9 +106,96 @@ void Chip8::cycle() {
 
     // decode and exe 
     switch(instruction_type) {
-        // Let's say type is 0xA -> Instruction is ANNN
-        case 0xA:
-            // Set index register to NNN 
+        case 0x0000: 
+            if(opcode == 0x00E0){ // Clears screen. 
+                // TODO = clear screen  
+            } else if(opcode == 0x00EE) {// Returns a subroutine.  
+                --sp; // Goes back stack and pops 
+                pc = stack[sp]; // returns to prev saved point. 
+            }
+            break; 
+        case 0x1000: // Jump to NNN 
+            pc = opcode & 0x0FFF; 
+            break;
+        case 0x2000: // call a subroutine (set pc to NNN, store in the stack in order to return)
+            stack[sp] = pc; // we store current pc into the stack 
+            ++sp; //increment the stack pointer 
+            pc = opcode & 0x0FFF;// set pc to NNN
+            break;
+        case 0x3000: // 3XNN  - Skips to next instruction of VX == NN 
+            // Extract the register 
+            uint8_t regX = (opcode & 0x0F00) >> 8;  
+            // Extract NN 
+            uint8_t byte = opcode & 0x00FF;
+
+            if(V[regX] == byte){
+                pc += 2;
+            }
+            break; 
+        case 0x4000: // 4XNN - skips to next instruction if VX != NN
+            // Extract the register 
+            uint8_t regX = (opcode & 0x0F00) >> 8;  
+            // Extract NN 
+            uint8_t byte = opcode & 0x00FF;
+
+            if(V[regX] != byte){
+                pc += 2; 
+            }
+            break; 
+        case 0x5000: // 5XY0 -> if reg x and reg y are equal skip to next instruction 
+            uint8_t regX = (opcode & 0x0F00) >> 8; // shift 8 to right 
+            uint8_t regY = (opcode & 0x00F0) >> 4; // shift 4 to right 
+
+            if(V[regX] == V[regY]){
+                pc += 2; 
+            }
+            break; 
+        case 0x6000: // 6XNN -> sets value of register X to NN - LD Vx 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = opcode & 0x00FF; 
+            V[regX] = byte; 
+            break;
+        case 0x7000: // 7xkk -> Add value of regX to byte. 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = opcode & 0x00FF;
+
+            V[regX] += byte;
+            break; 
+        case 0x8000: // 8xy0 load vx to vy
+            uint8_t lastBit = opcode & 0x000F;     
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t regY = (opcode & 0x00F0) >> 4; 
+            switch (lastBit){
+                case 0: 
+                    V[regX] = V[regY]; // Sets x to y 
+                    break;
+                case 1: 
+                    V[regX] = V[regX] | V[regY]; // can also do V[regX] |= V[regY] OR
+                    break;
+                case 2: 
+                    V[regX] = V[regX] & V[regY]; // AND
+                    break;
+                case 3:
+                    V[regX] = V[regX] ^ V[regY]; // XOR 
+                    break; 
+                case 4:
+                    uint16_t sum = V[regX] + V[regY]; // Add two register with carry flag. 
+                    if(sum > 255){ 
+                        V[0xF] = 1; 
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    uint8_t value = sum & 0xFF; 
+                    V[regX] = value; 
+                    break;
+                case 5:
+                case 6:
+                case 7:
+                case E: 
+            }
+
+            break; 
+        case 0xA000:  // Set index register to NNN - ANNN
             I = opcode & 0x0FFF;
             break;
         default: 
