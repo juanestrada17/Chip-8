@@ -11,7 +11,6 @@ void Chip8::initialize(){
     memory.fill(0); 
     V.fill(0);
     stack.fill(0);
-    // TODO => Display
     gfx.fill(0);
 
     // resets 
