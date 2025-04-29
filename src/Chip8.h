@@ -6,7 +6,6 @@
 #include <cstdint>  
 
 // 700 instructions per second  -> good for most chip 8 programs 
-
 const unsigned int MEMORY_SIZE = 4096; 
 const unsigned int STACK_ADDRESSES = 16;
 const unsigned int REGISTERS = 16;
