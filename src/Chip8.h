@@ -11,7 +11,7 @@ class Chip8{
 public: 
     Chip8(); 
     void initialize();
-    void loadRom(); //copies the program in memory, loops through it and sets it into the memory array. 
+    void loadRom();
 private:
     std::array<uint8_t, 4096> memory; //4KB
     
@@ -25,6 +25,8 @@ private:
     uint8_t delay_timer;
     uint8_t sound_timer; 
 
+    // 2048 pixels 
+    std::array<uint8_t, 64 * 32> gfx;
 
     // 35 opcodes of two bytes
     uint16_t opcode; 

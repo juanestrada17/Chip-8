@@ -11,7 +11,8 @@ void Chip8::initialize(){
     memory.fill(0); 
     V.fill(0);
     stack.fill(0);
-    // TODO => Display  
+    // TODO => Display
+    gfx.fill(0);
 
     // resets 
     pc = 0x200; // pc starts at location 0x200
@@ -105,17 +106,227 @@ void Chip8::cycle() {
 
     // decode and exe 
     switch(instruction_type) {
-        // Let's say type is 0xA -> Instruction is ANNN
-        case 0xA:
-            // Set index register to NNN 
+        case 0x0000: 
+            if(opcode == 0x00E0){ // Clears screen. 
+                // TODO = clear screen  
+            } else if(opcode == 0x00EE) {// Returns a subroutine.  
+                --sp; // Goes back stack and pops 
+                pc = stack[sp]; // returns to prev saved point. 
+            }
+            break; 
+        case 0x1000: // Jump to NNN 
+            pc = opcode & 0x0FFF; 
+            break;
+        case 0x2000: // call a subroutine (set pc to NNN, store in the stack in order to return)
+            stack[sp] = pc; // we store current pc into the stack 
+            ++sp; //increment the stack pointer 
+            pc = opcode & 0x0FFF;// set pc to NNN
+            break;
+        case 0x3000: // 3XNN  - Skips to next instruction of VX == NN 
+            // Extract the register 
+            uint8_t regX = (opcode & 0x0F00) >> 8;  
+            // Extract NN 
+            uint8_t byte = opcode & 0x00FF;
+
+            if(V[regX] == byte){
+                pc += 2;
+            }
+            break; 
+        case 0x4000: // 4XNN - skips to next instruction if VX != NN
+            // Extract the register 
+            uint8_t regX = (opcode & 0x0F00) >> 8;  
+            // Extract NN 
+            uint8_t byte = opcode & 0x00FF;
+
+            if(V[regX] != byte){
+                pc += 2; 
+            }
+            break; 
+        case 0x5000: // 5XY0 -> if reg x and reg y are equal skip to next instruction 
+            uint8_t regX = (opcode & 0x0F00) >> 8; // shift 8 to right 
+            uint8_t regY = (opcode & 0x00F0) >> 4; // shift 4 to right 
+
+            if(V[regX] == V[regY]){
+                pc += 2; 
+            }
+            break; 
+        case 0x6000: // 6XNN -> sets value of register X to NN - LD Vx 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = opcode & 0x00FF; 
+            V[regX] = byte; 
+            break;
+        case 0x7000: // 7xkk -> Add value of regX to byte. 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = opcode & 0x00FF;
+
+            V[regX] += byte;
+            break; 
+        case 0x8000: // 8xy0 load vx to vy
+            uint8_t lastBit = opcode & 0x000F;     
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t regY = (opcode & 0x00F0) >> 4; 
+            switch (lastBit){
+                case 0: 
+                    V[regX] = V[regY]; // Sets x to y 
+                    break;
+                case 1: 
+                    V[regX] = V[regX] | V[regY]; // can also do V[regX] |= V[regY] OR
+                    break;
+                case 2: 
+                    V[regX] = V[regX] & V[regY]; // AND
+                    break;
+                case 3:
+                    V[regX] = V[regX] ^ V[regY]; // XOR 
+                    break; 
+                case 4:
+                    uint16_t sum = V[regX] + V[regY]; // Add two register with carry flag. 
+                    if(sum > 255){ 
+                        V[0xF] = 1; 
+                    } else {
+                        V[0xF] = 0;
+                    }
+                    uint8_t value = sum & 0xFF; 
+                    V[regX] = value; 
+                    break;
+                case 5:
+                    if(V[regX] > V[regY]){
+                        V[0xF] = 1;
+                    } else {
+                        V[0xF] = 0; 
+                    }
+                    V[regX] -= V[regY]; 
+                    break;
+                case 6: // Vx = Vx SHR 1
+                    // SHR 1 shift bit to the right. 
+                    // least significant bit is 1 then VF 1.
+                    lastBit = V[regX] & 0x000F; 
+                    V[0xF] = (V[regX] & 0x1); 
+
+                    V[regX] >>= 1; //shift to right
+                    break; 
+
+                case 7: // SubN vx, vy 
+                    if(V[regY] > V[regX]){
+                        V[0xF] = 1; 
+                    } else {
+                        V[0xF] = 0; 
+                    }
+
+                    V[regX] = V[regY] - V[regX];
+                    break; 
+                case 0xE: // vx = vx shl 1 
+                    V[0xF] = (V[regX] & 0x80) >> 7; // most significate bit. 
+                    V[regX] <<= 1; 
+                    break;  
+                default:
+                    std::cout << "0x8000 code not invalid or not recognized " << std::endl; 
+            }
+            break; 
+        case 0x9000: // 9XY0 skip next instruction if Vx != Vy 
+            uint8_t regX = (opcode & 0x0F00) >> 8;
+            uint8_t regY = (opcode & 0x00F0) >> 4; 
+
+            if(V[regX] != V[regY]){
+                pc += 2;
+            }
+            break;  
+        case 0xA000:  // Set index register to NNN - ANNN
             I = opcode & 0x0FFF;
             break;
+        case 0xB000: // jump to NNN + V0 
+            uint16_t address = (opcode & 0x0FFF); 
+            pc = address + V[0]; 
+            break; 
+        case 0xC000: // perform random AND operation with a random byte and NN  
+            //TODO implement random 
+            break; 
+        case 0xD000: // Draw -> Display a n-byte sprite at memory location I at Vx, Vy, set VF = collision 
+            // Sprite is 8 pixels wide. 
+            // if there's a sprite, there's collision. Set VF 
+            // XOR screen pixel with 0xFFFFFFFF to flip on or off 
+            // TODO 
+            break; 
+        case 0xE000:
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = (opcode & 0x00FF); 
+            switch(byte){
+                case 0x9E:
+                    // skip next instruction if key with value of Vx is pressed
+                    //TODO
+                    break; 
+                case 0xA1:
+                    // skip if key with value vx is not pressed 
+                    // TODO
+                    break; 
+            }
+            break; 
+        case 0xF000: 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = (opcode & 0x00FF); 
+            switch (byte) {
+                case 0x07:
+                    break;
+                     // TODO -> set V[regX] to timer value  
+                case 0x0A: 
+                    // TODO
+                    break; 
+                case 0x15:
+                    //TODO
+                    break; 
+                case 0x18:
+                //TODO 
+                    break; 
+                case 0x1E:
+                    I += V[regX]; 
+                    break; 
+                case 0x29:
+                //TODO 
+                    break;
+                case 0x33:
+                    // BCD -> Binary coded decimal - store BCD of Vx in mem locations I, I + 1 and I + 2
+                    // hundreds digit at I, tens digit at I+1 and ones digit at I+2
+                    uint8_t value = V[regX]; 
+                    // ones
+                    memory[i + 2] = value % 10; 
+                    val /= 10;
+                    // tens
+                    memory[I + 1] = value % 10; 
+                    val /= 10; 
+                    // hundreds
+                    memory[I] = value % 10;
+
+                    break; 
+                case 0x55: 
+                    // store registers V0  through Vx starting at location I 
+                    for (int i = 0; i <= regX; ++i){
+                        memory[I + i] = V[i];
+                    }
+                    break; 
+                case 0x65: 
+                    // read registers FROM mem V0 through Vx starting at location I
+                    for (int i = 0;i <= regX; ++i){
+                        V[i] = memory[I + 1]; 
+                    }
+                    break;  
+                default: 
+                    std::cout << "Invalid 0xF000 instruction " << std::endl; 
+                    break; 
+                }
+            break; 
+        
         default: 
+            std::cout << "Unrecognized opcode" << std::endl; 
             break; 
     }
 
-    // timers
-
+    // decrement timers. 
+    if (delay_timer > 0){
+        --delayTimer;
+    }
+    
+    if(sound_timer > 0){
+        --sound_timer;
+    }
 }; 
 
 // Create a switch case statement to mask off with binary AND the first number. 
