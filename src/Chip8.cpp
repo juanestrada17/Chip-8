@@ -319,8 +319,14 @@ void Chip8::cycle() {
             break; 
     }
 
-    // timers
-
+    // decrement timers. 
+    if (delay_timer > 0){
+        --delayTimer;
+    }
+    
+    if(sound_timer > 0){
+        --sound_timer;
+    }
 }; 
 
 // Create a switch case statement to mask off with binary AND the first number. 

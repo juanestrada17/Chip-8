@@ -11,7 +11,7 @@ class Chip8{
 public: 
     Chip8(); 
     void initialize();
-    void loadRom(); //copies the program in memory, loops through it and sets it into the memory array. 
+    void loadRom();
 private:
     std::array<uint8_t, 4096> memory; //4KB
     
