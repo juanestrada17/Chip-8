@@ -10,8 +10,6 @@ GraphicController::GraphicController(const char* title, int winHeight, int winWi
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED); 
     // renderer, format (32 bits per pixel), access type(textures updated frequently each frame), w, height
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, 64, 32);
-
-    // TODO = Error handling 
 }
 
 GraphicController::~GraphicController(){

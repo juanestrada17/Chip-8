@@ -4,6 +4,7 @@
 #include <array>
 #include <vector> 
 #include <cstdint>  
+#include <random> 
 
 // 700 instructions per second  -> good for most chip 8 programs 
 const unsigned int MEMORY_SIZE = 4096; 
@@ -33,7 +34,6 @@ private:
 
     uint8_t delay_timer;
     uint8_t sound_timer; 
-    uint8_t keypad 
 
     // 35 opcodes of two bytes
     uint16_t opcode; 
@@ -41,6 +41,7 @@ private:
     // FDE 
     void cycle();
 
-    // other instructions  
-    void halt();     
+    // rand 
+    std::default_random_engine randGen; 
+    std::uniform_int_distribution<uint8_t> randByte; 
 }

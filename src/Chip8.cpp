@@ -1,8 +1,19 @@
 #include "Chip8.h"
 #include <iostream>
-#include <fstream> 
-Chip8::Chip8() {
+#include <fstream>
+#include <cstdint> 
+#include <chrono>  
+#include <random> 
+
+// Fonts 16 Characters of 5 bytes each = 80 bytes total array . 
+// Font is loaded into memory at 0x50 
+const unsigned int FONT_START_ADDRESS = 0x50;
+const unsigned int FONTSET_SIZE = 80; 
+
+Chip8::Chip8() : randGen(std::chrono::system_clock::now().time_since_epoch().count()) {
     initialize();
+
+    randByte = std::uniform_int_distribution<uint8_t>(0, 255U); 
 };
 
 // Initialize function 
@@ -19,10 +30,7 @@ void Chip8::initialize(){
     sp = 0x00;
     opcode = 0x00; 
     
-    // Fonts 16 Characters of 5 bytes each = 80 bytes total array . 
-    // Font is loaded into memory at 0x50 
-    const unsigned int FONT_START_ADDRESS = 0x50;
-    const unsigned int FONTSET_SIZE = 80; 
+    
     uint8_t fontset[FONTSET_SIZE] = 
     {
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -48,7 +56,8 @@ void Chip8::initialize(){
         memory[FONT_START_ADDRESS + 1] = fontset[i];
     }
 
-    // TODO => sound/timers 
+    delay_timer = 0; 
+    sound_timer = 0; 
 }
 
 // filename is pointer to a read-only / const char 
@@ -107,7 +116,9 @@ void Chip8::cycle() {
     switch(instruction_type) {
         case 0x0000: 
             if(opcode == 0x00E0){ // Clears screen. 
-                // TODO = clear screen  
+                for(int i = 0; i < gfx.size(); ++i){
+                    gfx[i] = 0; 
+                }
             } else if(opcode == 0x00EE) {// Returns a subroutine.  
                 --sp; // Goes back stack and pops 
                 pc = stack[sp]; // returns to prev saved point. 
@@ -236,26 +247,70 @@ void Chip8::cycle() {
             uint16_t address = (opcode & 0x0FFF); 
             pc = address + V[0]; 
             break; 
-        case 0xC000: // perform random AND operation with a random byte and NN  
-            //TODO implement random 
+        case 0xC000: // perform random AND operation with a random byte and NN  CXNN 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t byte = (opcode & 0x00FF); 
+
+            V[regX] = randByte(randGen) & byte; 
             break; 
         case 0xD000: // Draw -> Display a n-byte sprite at memory location I at Vx, Vy, set VF = collision 
+            // DXYN  
             // Sprite is 8 pixels wide. 
             // if there's a sprite, there's collision. Set VF 
             // XOR screen pixel with 0xFFFFFFFF to flip on or off 
-            // TODO 
+            
+            // Get X and Y coordinates from Vx /  Vy 
+            uint8_t regX = (opcode & 0x0F00) >> 8; 
+            uint8_t regY = (opcode & 0x00F0) >> 4; 
+            uint8_t byte = opcode & 0x000F; // height 
+            uint8_t width = 8; 
+    
+            // modulo 64 / 31  
+            // wrapping -> cordX % 64 -> 68 % 64 = 4 
+            // codY % 32 -> 33 % 32 = 1 
+            uint8_t xCord = V[regX] & 63;
+            uint8_t yCord = V[regY] & 31; 
+            V[0xF] = 0; 
+            
+            // let's say it's Dx0003 -> height would be 3 so it executes 3 rows  
+            for(unsigned int row; row < height; ++row){
+                // Starts from index register. 
+                uint8_t sprite_byte = memory[I + row]; 
+                // loop through each sprite_byte of 8 bits of width 
+                for(unsigned int col; col < width; ++col){
+                    // bit mask leftmost bit and shifts 0,1,2,3...7 position. 0x80
+                    uint8_t sprite_pixel = sprite_byte & (0x80 >> col);
+                    // Checks point in screen where it will be drawn
+                    uint32_t* screen_pixel = &gfx[(yCord + row) * VIDEO_WIDTH + (xCord + col)];
+                    
+                    // if sprite_pixel is 1
+                    if (sprite_pixel){
+                        // we check if the screen already has a 1 at that position 
+                        if(*screen_pixel == 0xFFFFFFFF){
+                            // if it does we set VF to it 
+                            V[0xF] = 1; 
+                        }
+                    }
+                    // Perform XOR over the screen pixel to turn it ON 
+                    *screen_pixel ^= 0xFFFFFFFF;                  
+                }
+            }
             break; 
         case 0xE000:
             uint8_t regX = (opcode & 0x0F00) >> 8; 
             uint8_t byte = (opcode & 0x00FF); 
             switch(byte){
-                case 0x9E:
-                    // skip next instruction if key with value of Vx is pressed
-                    //TODO
+                case 0x9E: // skip next instruction if key with value of Vx is pressed
+                    uint8_t regKey = V[regX]; 
+                    if(keypad[regKey] == 1){
+                        pc += 2; 
+                    }
                     break; 
-                case 0xA1:
-                    // skip if key with value vx is not pressed 
-                    // TODO
+                case 0xA1: // skip if key with value vx is not pressed 
+                    uint8_t regKey = V[regX]; 
+                    if(keypad[regKey] == 0){
+                        pc += 2;
+                    }
                     break; 
             }
             break; 
@@ -263,23 +318,36 @@ void Chip8::cycle() {
             uint8_t regX = (opcode & 0x0F00) >> 8; 
             uint8_t byte = (opcode & 0x00FF); 
             switch (byte) {
-                case 0x07:
+                case 0x07: // set V[regX] to timer value  
+                    V[regX] = delay_timer; 
                     break;
-                     // TODO -> set V[regX] to timer value  
-                case 0x0A: 
-                    // TODO
+                case 0x0A: // If a key is pressed, set regX to it  Fx0A - blocking instruction. 
+                    bool keyPressed = false; 
+                    for(uint8_t i = 0; i < 16; ++i){
+                        if(keypad[i]){
+                            V[regX] = i; 
+                            keyPressed = true; 
+                            break; 
+                        }
+                    }
+                    
+                    if(!keyPressed){
+                        pc -= 2; 
+                    }
                     break; 
                 case 0x15:
-                    //TODO
+                    delay_timer = V[regX];
                     break; 
                 case 0x18:
-                //TODO 
+                    sound_time = V[regX];
                     break; 
                 case 0x1E:
                     I += V[regX]; 
                     break; 
-                case 0x29:
-                //TODO 
+                case 0x29: // Load F, Vx -> fx29  -----  set I = location of sprite for digit vX 
+                    // Vx is a hex 0-F and corresponds to the sprite in memory 
+                    // Each font is 5 bytes, so we need to multiply by five -> Ex: 0x050 -> 0x055 -> 0x05A -> 0x05F
+                    I =  FONT_START_ADDRESS + (5 * V[regX]); 
                     break;
                 case 0x33:
                     // BCD -> Binary coded decimal - store BCD of Vx in mem locations I, I + 1 and I + 2
