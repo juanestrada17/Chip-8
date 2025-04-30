@@ -6,7 +6,6 @@
 #include <cstdint>  
 #include <random> 
 
-// 700 instructions per second  -> good for most chip 8 programs 
 const unsigned int MEMORY_SIZE = 4096; 
 const unsigned int STACK_ADDRESSES = 16;
 const unsigned int REGISTERS = 16;
@@ -18,10 +17,12 @@ class Chip8{
 public: 
     Chip8(); 
     void initialize();
-    void loadRom();
+    bool loadRom(const char* filename);
+    // FDE 
+    void cycle();
     // 2048 pixels 
     std::array<uint32_t, VIDEO_WIDTH * VIDEO_HEIGHT> gfx;
-    std::array<uint8_t KEY_COUNT> keypad; 
+    std::array<uint8_t, KEY_COUNT> keypad; 
 private:
     std::array<uint8_t, MEMORY_SIZE> memory; //4KB
     
@@ -38,10 +39,7 @@ private:
     // 35 opcodes of two bytes
     uint16_t opcode; 
 
-    // FDE 
-    void cycle();
-
     // rand 
     std::default_random_engine randGen; 
     std::uniform_int_distribution<uint8_t> randByte; 
-}
+};

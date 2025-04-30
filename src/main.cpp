@@ -3,6 +3,7 @@
 #include "GraphicsController.h"
 #include "Chip8.h"
 #include <SDL2/SDL.h> 
+#include <chrono> 
 
 
 int main(int argc, char* argv[]){
