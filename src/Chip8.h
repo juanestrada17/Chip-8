@@ -18,26 +18,23 @@ public:
     Chip8(); 
     void initialize();
     bool loadRom(const char* filename);
-    // FDE 
     void cycle();
-    // 2048 pixels 
-    std::array<uint32_t, VIDEO_WIDTH * VIDEO_HEIGHT> gfx;
+    std::array<uint32_t, VIDEO_WIDTH * VIDEO_HEIGHT> gfx; // 2048 pixels 
     std::array<uint8_t, KEY_COUNT> keypad; 
 private:
     std::array<uint8_t, MEMORY_SIZE> memory; //4KB
     
 
-    std::array<uint16_t, STACK_ADDRESSES> stack; // 16 bit addresses, remembers current loc before a jump 
-    uint8_t sp; 
+    std::array<uint16_t, STACK_ADDRESSES> stack;
+    uint8_t sp; // stack pointer 
     std::array<uint8_t, REGISTERS> V; // 8 bit, 16 registers V0 - VF  // V[0] - V[15]
-    uint16_t pc; 
+    uint16_t pc; // program counter
     uint16_t I; // index register
 
     uint8_t delay_timer;
     uint8_t sound_timer; 
 
-    // 35 opcodes of two bytes
-    uint16_t opcode; 
+    uint16_t opcode; // 35 opcodes of two bytes
 
     // rand 
     std::default_random_engine randGen; 

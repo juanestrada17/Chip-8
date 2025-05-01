@@ -5,14 +5,12 @@
 #include <SDL2/SDL.h> 
 #include <chrono> 
 
-
 int main(int argc, char* argv[]){
-    
     if(argc < 2){
         std::cout << "Usage: .exe romname" << std::endl; 
         return 1; 
     }
-    // get rom 
+    
     const char* romFilename = argv[1]; 
     // init graphics 
     GraphicsController gfx("Chip-8 Emulator", VIDEO_WIDTH * 10, VIDEO_HEIGHT * 20); 
@@ -25,13 +23,11 @@ int main(int argc, char* argv[]){
     }
     
     int videoPitch = sizeof(uint32_t) * VIDEO_WIDTH; 
-    // 700 instructions per sec 
     float cycleDelay = 1000.0f / 500.0f;
     auto lastCycleTime = std::chrono::high_resolution_clock::now(); 
     bool quit = false;
 
     while(!quit){
-        // handle input returns true or false 
         quit = gfx.handleInput(chip8.keypad); 
         auto currentTime = std::chrono::high_resolution_clock::now(); 
         float elapsedTime = std::chrono::duration<float, std::chrono::milliseconds::period>(currentTime - lastCycleTime).count();
