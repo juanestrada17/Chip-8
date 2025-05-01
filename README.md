@@ -2,7 +2,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <img src="assets/space.png" alt="Logo" width="80" height="80">
+  <img src="assets/space.png" alt="Logo" width="200" height="200">
   
 
   <h3 align="center">Chip-8</h3>
@@ -10,6 +10,7 @@
   <p align="center">
     A Chip-8 interpreter created in C++ 
     <br />
+  </p>
 </div>
 
 
@@ -89,7 +90,9 @@ To run the Chip-8 interpreter we need to make use of the Chip8.exe executable. A
 ```sh
   .\out\build\Chip8\Chip8.exe .\roms\pong2.ch8
 ```
-<img src="assets/space.png" alt="Logo" width="80" height="80">
+<div align="center">
+    <img src="assets/space.png" alt="Logo" width="200" height="200">
+</div>
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
