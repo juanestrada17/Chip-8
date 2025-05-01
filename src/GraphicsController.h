@@ -6,7 +6,7 @@
 class GraphicsController{
 public:
     GraphicsController(const char* title, int winHeight, int winWidth); 
-    void update(const void* gfx, int pitch);  //const uint8_t* gfx,
+    void update(std::array<uint32_t, 64 * 32>& gfx, int pitch);  
     // destructor 
     ~GraphicsController();
     bool handleInput(std::array<uint8_t, 16>& keys);

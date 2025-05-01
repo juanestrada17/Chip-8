@@ -9,7 +9,7 @@
 // Font is loaded into memory at 0x50 
 const unsigned int FONT_START_ADDRESS = 0x50;
 const unsigned int FONTSET_SIZE = 80; 
-
+const unsigned int START_ADDRESS = 0x200; 
 Chip8::Chip8() : randGen(std::chrono::system_clock::now().time_since_epoch().count()) {
     initialize();
 
@@ -53,7 +53,7 @@ void Chip8::initialize(){
     
     for (unsigned int i = 0; i < FONTSET_SIZE; ++i)
     {
-        memory[FONT_START_ADDRESS + 1] = fontset[i];
+        memory[FONT_START_ADDRESS + i] = fontset[i];
     }
 
     delay_timer = 0; 
@@ -95,7 +95,7 @@ bool Chip8::loadRom(const char * filename){
     // check if the file size is not bigger than the available memory size. 
     if(rom_size < (4096 - 512)){
         for(int i = 0; i < buffer.size(); ++i){
-            memory[512 + i] = buffer[i];
+            memory[START_ADDRESS + i] = buffer[i];
         }
     }
 
@@ -193,7 +193,6 @@ void Chip8::cycle() {
                 case 6: // Vx = Vx SHR 1
                     // SHR 1 shift bit to the right. 
                     // least significant bit is 1 then VF 1.
-                    lastBit = V[regX] & 0x000F; 
                     V[0xF] = (V[regX] & 0x1); 
                     V[regX] >>= 1; //shift to right
                     break; 
@@ -240,31 +239,31 @@ void Chip8::cycle() {
             // modulo 64 / 31  
             // wrapping -> cordX % 64 -> 68 % 64 = 4 
             // codY % 32 -> 33 % 32 = 1 
-            uint8_t xCord = V[regX] & 63;
-            uint8_t yCord = V[regY] & 31; 
+            uint8_t xCord = V[regX];
+            uint8_t yCord = V[regY]; 
             V[0xF] = 0; 
             
             // let's say it's Dx0003 -> height would be 3 so it executes 3 rows  
-            for(unsigned int row; row < height; ++row){
+            for(unsigned int row = 0; row < height; ++row){
                 // Starts from index register. 
                 uint8_t sprite_byte = memory[I + row]; 
                 // loop through each sprite_byte of 8 bits of width 
-                for(unsigned int col; col < width; ++col){
+                for(unsigned int col = 0; col < width; ++col){
                     // bit mask leftmost bit and shifts 0,1,2,3...7 position. 0x80
                     uint8_t sprite_pixel = sprite_byte & (0x80 >> col);
-                    // Checks point in screen where it will be drawn
-                    uint32_t* screen_pixel = &gfx[(yCord + row) * VIDEO_WIDTH + (xCord + col)];
-                    
                     // if sprite_pixel is 1
                     if (sprite_pixel){
+                        uint32_t x = (xCord + col) % VIDEO_WIDTH;
+                        uint32_t y = (yCord + row) % VIDEO_HEIGHT;
+                        uint32_t* screen_pixel = &gfx[y * VIDEO_WIDTH + x];
                         // we check if the screen already has a 1 at that position 
                         if(*screen_pixel == 0xFFFFFFFF){
                             // if it does we set VF to it 
                             V[0xF] = 1; 
                         }
-                    }
-                    // Perform XOR over the screen pixel to turn it ON 
-                    *screen_pixel ^= 0xFFFFFFFF;                  
+                        // Perform XOR over the screen pixel to turn it ON 
+                        *screen_pixel ^= 0xFFFFFFFF;
+                    }                  
                 }
             }
             break;
@@ -342,11 +341,11 @@ void Chip8::cycle() {
                 case 0x65: 
                     // read registers FROM mem V0 through Vx starting at location I
                     for (int i = 0;i <= regX; ++i){
-                        V[i] = memory[I + 1]; 
+                        V[i] = memory[I + i]; 
                     }
                     break;  
                 default: 
-                    std::cout << "Invalid 0xF000 instruction " << std::endl; 
+                    std::cout << "Invalid 0xF000 instruction " << std::hex << opcode << std::endl; 
                     break; 
                 }
             break; 

@@ -6,7 +6,7 @@
 GraphicsController::GraphicsController(const char* title, int winHeight, int winWidth){
     SDL_Init(SDL_INIT_EVERYTHING); // SDL_INIT_VIDEO
     // title, x, y, w, h, flags 
-    window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, winWidth, winHeight, SDL_WINDOW_RESIZABLE); //SDL_WINDOW_SHOWN
+    window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, winWidth, winHeight, SDL_WINDOW_SHOWN); //SDL_WINDOW_SHOWN
     // window, index (-1 is auto), flags -> GPU resources hardware acc
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED); 
     // renderer, format (32 bits per pixel), access type(textures updated frequently each frame), w, height
@@ -21,8 +21,8 @@ GraphicsController::~GraphicsController(){
 };
 
 // gfx / buffer 
-void GraphicsController::update(const void* gfx, int pitch){
-    SDL_UpdateTexture(texture, NULL, gfx, pitch);  
+void GraphicsController::update(std::array<uint32_t, 64 * 32>& gfx, int pitch){
+    SDL_UpdateTexture(texture, NULL, gfx.data(), pitch);  
     SDL_RenderClear(renderer);            
     SDL_RenderCopy(renderer, texture, NULL, NULL);
     SDL_RenderPresent(renderer);    
@@ -152,6 +152,6 @@ bool GraphicsController::handleInput(std::array<uint8_t, 16>& keys){
                     std::cout << "Key not recognized" << std::endl;
                     break; }
         }
-    return quit; 
     }
+    return quit; 
 };
