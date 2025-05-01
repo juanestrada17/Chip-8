@@ -1,0 +1,135 @@
+Step 1 -> Create the .h file 
+memory    = 4096 or 4KB -> 8 bits
+pc     = program counter starts at 512 - 0x200  
+sp     = stack pointer at 0x00 
+I      = Index register at 0x00
+V      = Registers from V0 TO VF, 16 registers of 8 bits 
+opcode = holds the current opcode set to 0x00
+stack  = 16 elements of 16 bits. 
+keypad = array of 16 keys. 
+keyCount    = 16 keys keypad
+delay_timer = 8 bit 
+sound_timer = 8 bit 
+gpx / buffer / video = array of 32 height and 64 width -> 2048
+
+methods  = initialize();
+loadRom();
+cycle(); fetch, decode and execute. 
+
+Step 2 -> Create the .cpp file 
+* Create the constructor and initialize everything inside the constructor
+    Inside construction we can pass the random byte generator for a future opcode that requires it. 
+* create the Chip8::initialize() function. We set the array.fill(0) for memory, stack, gfx and V 
+* set the pc to the 0x200 position and everything else to 0x00
+* Initialize the fontset. 5 bytes each with a size of 80 total -> 0 - F 
+    Add the fonts into memory starting at memory address 0x50  (SEE MORE STEP 4)
+
+Step 3 -> Open file/rom in binary mode, create a buffer to store its binary data and store it inside memory from 0x200 - 512 location.
+1. The function accepts a reference to a char filename 
+2. We initialize everything using the initialize(); function
+3. in c++ we use std::ifstream rom_file(filename, std:ios::binary | std::ios::ate); to open file while pointing at the end. 
+4. We get the file size using std::streamsize rom_size =file.tellg();
+5. rewind stream pointer to start 
+6. Create a buffer with the same file_size. This can be a vector or using malloc 
+7. Read from file and write to buffer using rom_file.read(buffer.data(), file_size)
+8. Starting at position 512 in memory assign elements in the memory array to the ones in the buffer. Make sure the rom size doesn't exceed the memory size 4096 - 512 
+9. Close file. 
+
+Step 4 -> Declare font and initialize them in memory 
+1. There are 16 characters 0 - F, each character is represented by 5 bytes. 
+2. Create an array of size 80, 16 * 5. 
+uint8_t fontset[FONTSET_SIZE] = 
+    {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+    };
+3. Fonts are loaded at memory address 0x50 -> 80 
+4. loop through the fontset and load them into memory. 
+
+Step 5 -> Declare the graphics 
+1. std::array<uint8_t, 64 * 32> gfx;
+
+Step 6 -> Opcodes / instructions 
+1. Create a cycle function that handles the fetch, decode, execute cycle 
+2. Opcodes in chip8 are two consecutive bytes. So we need to extract and combine them opcode = (memory[pc] << 8 | memory[pc + 1]);
+3. We can extract the instruction type from the opcode by masking out the first nibble. instruction_type = opcode & 0xF000;
+4. We increment pc by two. These last steps represent the Fetch step of the cycle. 
+5. In a switch case we check which type the opcode is and perform an action depending to its type.
+
+Opcode types-> 
+0x0000 TYPE -> 
+    1. 00E0 clear screen
+    2. 00EE return, exits a subroutine by popping the stack and return pc to the current sp. 
+0x1000 TYPE -> We jump to NNN. We can use pc = opcode & 0x0FFF; 
+0x2000 TYPE -> Calls a subroutine. Sets stack[sp] = pc, ++sp and then calls pc at NNN -> pc = opcode & 0x0FFF;
+0x3000 TYPE -> Skip next instruction if Vx = NN;
+    * 3XNN -> X represents the register number and NN the last two nibbles. 
+    * Skip -> we increment pc += 2;          
+
+Step 7 -> Graphics implementation - SDL
+1. Create .h file
+    Outstanding methods:
+        Constructor that accepts title, width and height
+        update -> handles texture updates and renders
+        destructors 
+        Handle input (SEE STEP 8)
+    We need a window, renderer and texture. 
+2. Create .cpp file.
+3. In constructor initialize SDL 
+4. Create the window, renderer and texture. 
+5. Destroy texture, renderer, window and quit sdl. 
+6. Update texture, clear render. 
+
+Step 8 -> Key mapping implementation - SDL 
+1. Create an input handler. We can use SDL for this. 
+2. If a key is pressed set the key to 1. Example if the key 4 is pressed. 4 represents C, so keys[0xC] = 1; 
+3. if a key is released set the key to 0 
+
+Original Chip-8 key | Emulated keyboard 
+1 2 3 C             | 1 2 3 4
+4 5 6 D             | Q W E R
+7 8 9 E             | A S D F
+A 0 B F             | Z X C V
+
+Step 9 -> Main function 
+The main function will accept an argument. The argument will be the path of the rom to be executed
+* Get the rom file from the args. argv[1];
+* Initialize the graphics by passing the width and height.
+* Create a chip 8 object.  
+* Load the rom using the chip8 function. Make sure to do a return 1 if the file is not loaded properly or not found.
+* Create a video pitch the size of the graphics * the width 
+* Computers nowadays would run the Chip8 too fast, we need to limit the amount of instructions by creating a cycle delay: 
+    float cycleDelay = 1000.0f / 500.0f; // This makes it so its 500 instructions per second. 
+    Keep a hold of the lastCycleTime, crrentTime and elapsedTime (currentTime - lastCycleTime).
+    If the elapsedTime is higher than the cycleDelay we call the chip8.cycle() and screen update. 
+
+Step 10 -> Understanding sprites 
+Fontsets - Sprites =>
+Memory Address | Sprite for Hex Digit
+---------------------------------------
+0x000          | Sprite for '0'
+0x005          | Sprite for '1'
+0x00A          | Sprite for '2'
+0x00F          | Sprite for '3'
+...            | ...
+0x050          | Sprite for 'A'
+0x055          | Sprite for 'B'
+...            | ...
+assuming we start at 0x000 instead of 0x050
+If Vx = 0x0 (hexadecimal 0), the sprite for '0' is located at 0x000.
+If Vx = 0x1 (hexadecimal 1), the sprite for '1' is located at 0x005.
+If Vx = 0x2 (hexadecimal 2), the sprite for '2' is located at 0x00A.
