@@ -50,7 +50,7 @@ The CHIP-8 was developed by Joseph Weisbecker in 1977 and was originally used on
 
 This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
 
-* [[!C++]]
+* [![C++]]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
