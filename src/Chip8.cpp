@@ -9,7 +9,7 @@
 // Font is loaded into memory at 0x50 
 const unsigned int FONT_START_ADDRESS = 0x50;
 const unsigned int FONTSET_SIZE = 80; 
-
+const unsigned int START_ADDRESS = 0x200; 
 Chip8::Chip8() : randGen(std::chrono::system_clock::now().time_since_epoch().count()) {
     initialize();
 
@@ -53,7 +53,7 @@ void Chip8::initialize(){
     
     for (unsigned int i = 0; i < FONTSET_SIZE; ++i)
     {
-        memory[FONT_START_ADDRESS + 1] = fontset[i];
+        memory[FONT_START_ADDRESS + i] = fontset[i];
     }
 
     delay_timer = 0; 
@@ -74,16 +74,16 @@ bool Chip8::loadRom(const char * filename){
         return false; 
     }
     //filesize 
-    std::streamsize rom_size = file.tellg(); 
+    std::streamsize rom_size = rom_file.tellg(); 
     std::cout << "Rom Size is: " << rom_size << std::endl; 
     // seekg + beg, move to x bytes from beginning 
     rom_file.seekg(0, std::ios::beg); // rewind 
 
     // buffer / mem allocation 
-    std::vector<char> buffer(file_size); 
+    std::vector<char> buffer(rom_size); 
 
     // reads from file and adds to buffer, data gives access to the internal vector array. We get a pointer to the first element in the vector.
-    if(!rom_file.read(buffer.data(), file_size)){
+    if(!rom_file.read(buffer.data(), rom_size)){
         std::cerr << "Failed to read the file.\n";
         return false; 
     } else{
@@ -93,9 +93,9 @@ bool Chip8::loadRom(const char * filename){
     // Store elements from buffer into chip 8 memory 
     // we loop through the memory array, starting at 512 in memory and while i is less than the size of the buffer
     // check if the file size is not bigger than the available memory size. 
-    if(file_size < (4096 - 512)){
+    if(rom_size < (4096 - 512)){
         for(int i = 0; i < buffer.size(); ++i){
-            memory[512 + i] = buffer[i];
+            memory[START_ADDRESS + i] = buffer[i];
         }
     }
 
@@ -108,8 +108,12 @@ bool Chip8::loadRom(const char * filename){
 void Chip8::cycle() {
     // Fetch -> read 2 bytes and combine 
     opcode = (memory[pc] << 8 | memory[pc + 1]);
-    instruction_type = opcode & 0xF000 
-    
+    uint16_t instruction_type = opcode & 0xF000;
+    uint8_t regX = (opcode & 0x0F00) >> 8; 
+    uint8_t regY = (opcode & 0x00F0) >> 4;
+    uint8_t byte = (opcode & 0x00FF); 
+    uint8_t lastBit = opcode & 0x000F;     
+
     pc += 2; 
 
     // decode and exe 
@@ -133,48 +137,27 @@ void Chip8::cycle() {
             pc = opcode & 0x0FFF;// set pc to NNN
             break;
         case 0x3000: // 3XNN  - Skips to next instruction of VX == NN 
-            // Extract the register 
-            uint8_t regX = (opcode & 0x0F00) >> 8;  
-            // Extract NN 
-            uint8_t byte = opcode & 0x00FF;
-
             if(V[regX] == byte){
                 pc += 2;
             }
             break; 
         case 0x4000: // 4XNN - skips to next instruction if VX != NN
-            // Extract the register 
-            uint8_t regX = (opcode & 0x0F00) >> 8;  
-            // Extract NN 
-            uint8_t byte = opcode & 0x00FF;
-
             if(V[regX] != byte){
                 pc += 2; 
             }
             break; 
         case 0x5000: // 5XY0 -> if reg x and reg y are equal skip to next instruction 
-            uint8_t regX = (opcode & 0x0F00) >> 8; // shift 8 to right 
-            uint8_t regY = (opcode & 0x00F0) >> 4; // shift 4 to right 
-
             if(V[regX] == V[regY]){
                 pc += 2; 
             }
             break; 
         case 0x6000: // 6XNN -> sets value of register X to NN - LD Vx 
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t byte = opcode & 0x00FF; 
             V[regX] = byte; 
             break;
         case 0x7000: // 7xkk -> Add value of regX to byte. 
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t byte = opcode & 0x00FF;
-
             V[regX] += byte;
             break; 
         case 0x8000: // 8xy0 load vx to vy
-            uint8_t lastBit = opcode & 0x000F;     
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t regY = (opcode & 0x00F0) >> 4; 
             switch (lastBit){
                 case 0: 
                     V[regX] = V[regY]; // Sets x to y 
@@ -188,7 +171,7 @@ void Chip8::cycle() {
                 case 3:
                     V[regX] = V[regX] ^ V[regY]; // XOR 
                     break; 
-                case 4:
+                case 4: {
                     uint16_t sum = V[regX] + V[regY]; // Add two register with carry flag. 
                     if(sum > 255){ 
                         V[0xF] = 1; 
@@ -198,6 +181,7 @@ void Chip8::cycle() {
                     uint8_t value = sum & 0xFF; 
                     V[regX] = value; 
                     break;
+                }
                 case 5:
                     if(V[regX] > V[regY]){
                         V[0xF] = 1;
@@ -209,19 +193,15 @@ void Chip8::cycle() {
                 case 6: // Vx = Vx SHR 1
                     // SHR 1 shift bit to the right. 
                     // least significant bit is 1 then VF 1.
-                    lastBit = V[regX] & 0x000F; 
                     V[0xF] = (V[regX] & 0x1); 
-
                     V[regX] >>= 1; //shift to right
                     break; 
-
                 case 7: // SubN vx, vy 
                     if(V[regY] > V[regX]){
                         V[0xF] = 1; 
                     } else {
                         V[0xF] = 0; 
                     }
-
                     V[regX] = V[regY] - V[regX];
                     break; 
                 case 0xE: // vx = vx shl 1 
@@ -233,9 +213,6 @@ void Chip8::cycle() {
             }
             break; 
         case 0x9000: // 9XY0 skip next instruction if Vx != Vy 
-            uint8_t regX = (opcode & 0x0F00) >> 8;
-            uint8_t regY = (opcode & 0x00F0) >> 4; 
-
             if(V[regX] != V[regY]){
                 pc += 2;
             }
@@ -244,84 +221,74 @@ void Chip8::cycle() {
             I = opcode & 0x0FFF;
             break;
         case 0xB000: // jump to NNN + V0 
-            uint16_t address = (opcode & 0x0FFF); 
-            pc = address + V[0]; 
+            pc = (opcode & 0x0FFF) + V[0]; 
             break; 
         case 0xC000: // perform random AND operation with a random byte and NN  CXNN 
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t byte = (opcode & 0x00FF); 
-
             V[regX] = randByte(randGen) & byte; 
             break; 
-        case 0xD000: // Draw -> Display a n-byte sprite at memory location I at Vx, Vy, set VF = collision 
+        case 0xD000: { // Draw -> Display a n-byte sprite at memory location I at Vx, Vy, set VF = collision 
             // DXYN  
             // Sprite is 8 pixels wide. 
             // if there's a sprite, there's collision. Set VF 
             // XOR screen pixel with 0xFFFFFFFF to flip on or off 
             
             // Get X and Y coordinates from Vx /  Vy 
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t regY = (opcode & 0x00F0) >> 4; 
-            uint8_t byte = opcode & 0x000F; // height 
+            uint8_t height = opcode & 0x000F; // height 
             uint8_t width = 8; 
     
             // modulo 64 / 31  
             // wrapping -> cordX % 64 -> 68 % 64 = 4 
             // codY % 32 -> 33 % 32 = 1 
-            uint8_t xCord = V[regX] & 63;
-            uint8_t yCord = V[regY] & 31; 
+            uint8_t xCord = V[regX];
+            uint8_t yCord = V[regY]; 
             V[0xF] = 0; 
             
             // let's say it's Dx0003 -> height would be 3 so it executes 3 rows  
-            for(unsigned int row; row < height; ++row){
+            for(unsigned int row = 0; row < height; ++row){
                 // Starts from index register. 
                 uint8_t sprite_byte = memory[I + row]; 
                 // loop through each sprite_byte of 8 bits of width 
-                for(unsigned int col; col < width; ++col){
+                for(unsigned int col = 0; col < width; ++col){
                     // bit mask leftmost bit and shifts 0,1,2,3...7 position. 0x80
                     uint8_t sprite_pixel = sprite_byte & (0x80 >> col);
-                    // Checks point in screen where it will be drawn
-                    uint32_t* screen_pixel = &gfx[(yCord + row) * VIDEO_WIDTH + (xCord + col)];
-                    
                     // if sprite_pixel is 1
                     if (sprite_pixel){
+                        uint32_t x = (xCord + col) % VIDEO_WIDTH;
+                        uint32_t y = (yCord + row) % VIDEO_HEIGHT;
+                        uint32_t* screen_pixel = &gfx[y * VIDEO_WIDTH + x];
                         // we check if the screen already has a 1 at that position 
                         if(*screen_pixel == 0xFFFFFFFF){
                             // if it does we set VF to it 
                             V[0xF] = 1; 
                         }
-                    }
-                    // Perform XOR over the screen pixel to turn it ON 
-                    *screen_pixel ^= 0xFFFFFFFF;                  
+                        // Perform XOR over the screen pixel to turn it ON 
+                        *screen_pixel ^= 0xFFFFFFFF;
+                    }                  
                 }
             }
-            break; 
+            break;
+        } 
         case 0xE000:
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t byte = (opcode & 0x00FF); 
             switch(byte){
                 case 0x9E: // skip next instruction if key with value of Vx is pressed
-                    uint8_t regKey = V[regX]; 
-                    if(keypad[regKey] == 1){
+                    // uint8_t key = V[regX]; 
+                    if(keypad[V[regX]] == 1){
                         pc += 2; 
                     }
                     break; 
                 case 0xA1: // skip if key with value vx is not pressed 
-                    uint8_t regKey = V[regX]; 
-                    if(keypad[regKey] == 0){
+                    if(keypad[V[regX]] == 0){
                         pc += 2;
                     }
                     break; 
             }
             break; 
         case 0xF000: 
-            uint8_t regX = (opcode & 0x0F00) >> 8; 
-            uint8_t byte = (opcode & 0x00FF); 
             switch (byte) {
                 case 0x07: // set V[regX] to timer value  
                     V[regX] = delay_timer; 
                     break;
-                case 0x0A: // If a key is pressed, set regX to it  Fx0A - blocking instruction. 
+                case 0x0A:{// If a key is pressed, set regX to it  Fx0A - blocking instruction. 
                     bool keyPressed = false; 
                     for(uint8_t i = 0; i < 16; ++i){
                         if(keypad[i]){
@@ -335,11 +302,12 @@ void Chip8::cycle() {
                         pc -= 2; 
                     }
                     break; 
+                }
                 case 0x15:
                     delay_timer = V[regX];
                     break; 
                 case 0x18:
-                    sound_time = V[regX];
+                    sound_timer = V[regX];
                     break; 
                 case 0x1E:
                     I += V[regX]; 
@@ -349,20 +317,21 @@ void Chip8::cycle() {
                     // Each font is 5 bytes, so we need to multiply by five -> Ex: 0x050 -> 0x055 -> 0x05A -> 0x05F
                     I =  FONT_START_ADDRESS + (5 * V[regX]); 
                     break;
-                case 0x33:
+                case 0x33: {
                     // BCD -> Binary coded decimal - store BCD of Vx in mem locations I, I + 1 and I + 2
                     // hundreds digit at I, tens digit at I+1 and ones digit at I+2
                     uint8_t value = V[regX]; 
                     // ones
-                    memory[i + 2] = value % 10; 
-                    val /= 10;
+                    memory[I + 2] = value % 10; 
+                    value /= 10;
                     // tens
                     memory[I + 1] = value % 10; 
-                    val /= 10; 
+                    value /= 10; 
                     // hundreds
                     memory[I] = value % 10;
 
                     break; 
+                }
                 case 0x55: 
                     // store registers V0  through Vx starting at location I 
                     for (int i = 0; i <= regX; ++i){
@@ -372,11 +341,11 @@ void Chip8::cycle() {
                 case 0x65: 
                     // read registers FROM mem V0 through Vx starting at location I
                     for (int i = 0;i <= regX; ++i){
-                        V[i] = memory[I + 1]; 
+                        V[i] = memory[I + i]; 
                     }
                     break;  
                 default: 
-                    std::cout << "Invalid 0xF000 instruction " << std::endl; 
+                    std::cout << "Invalid 0xF000 instruction " << std::hex << opcode << std::endl; 
                     break; 
                 }
             break; 
@@ -388,7 +357,7 @@ void Chip8::cycle() {
 
     // decrement timers. 
     if (delay_timer > 0){
-        --delayTimer;
+        --delay_timer;
     }
     
     if(sound_timer > 0){
