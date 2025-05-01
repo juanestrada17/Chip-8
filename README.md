@@ -150,4 +150,4 @@ The most outstanding resources used to create this project were
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
 [linkedin-url]: https://linkedin.com/in/othneildrew
 [product-screenshot]: images/screenshot.png
-[C++]: https://img.shields.io/badge/C++-000000?style=for-the-badge&logo=cplusplus&logoColor=white
+[C++]: https://img.shields.io/badge/C++-007ACC?style=for-the-badge&logo=cplusplus&logoColor=white
