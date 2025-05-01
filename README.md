@@ -2,9 +2,8 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <a href="https://github.com/othneildrew/Best-README-Template">
-    <img src="images/logo.png" alt="Logo" width="80" height="80">
-  </a>
+  <img src="assets/space.png" alt="Logo" width="80" height="80">
+  
 
   <h3 align="center">Chip-8</h3>
 
@@ -51,6 +50,7 @@ The CHIP-8 was developed by Joseph Weisbecker in 1977 and was originally used on
 This section should list any major frameworks/libraries used to bootstrap your project. Leave any add-ons/plugins for the acknowledgements section. Here are a few examples.
 
 * ![C++][C++]
+* ![SDL][SDL]
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -89,7 +89,7 @@ To run the Chip-8 interpreter we need to make use of the Chip8.exe executable. A
 ```sh
   .\out\build\Chip8\Chip8.exe .\roms\pong2.ch8
 ```
-
+<img src="assets/space.png" alt="Logo" width="80" height="80">
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -148,6 +148,6 @@ The most outstanding resources used to create this project were
 [license-shield]: https://img.shields.io/github/license/othneildrew/Best-README-Template.svg?style=for-the-badge
 [license-url]: https://github.com/othneildrew/Best-README-Template/blob/master/LICENSE.txt
 [linkedin-shield]: https://img.shields.io/badge/-LinkedIn-black.svg?style=for-the-badge&logo=linkedin&colorB=555
-[linkedin-url]: https://linkedin.com/in/othneildrew
-[product-screenshot]: images/screenshot.png
 [C++]: https://img.shields.io/badge/C++-007ACC?style=for-the-badge&logo=cplusplus&logoColor=white
+[SDL]: https://img.shields.io/badge/SDL2-0B7A75?style=for-the-badge&logo=SDL&logoColor=white
+
